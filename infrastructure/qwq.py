@@ -2,25 +2,25 @@ import modal
 
 # Define container image
 hf_image = modal.Image.debian_slim(python_version="3.10").pip_install(
-    "transformers", "gguf", "torch", "accelerate", "bitsandbytes", "pymongo[srv]"
+    "transformers", "gguf", "torch", "accelerate", "bitsandbytes"
 )
 
 # Create a Modal app
-app = modal.App(name="HF-Transformers-Lib-Phi4-14B-4b")
+app = modal.App(name="HF-Transformers-Lib-QWQ-32B-4b")
 
 # Set the volume to download and load LLM weights from
 model_volume = modal.Volume.from_name(
-    "huggingface-cache-phi4-14B-4b", create_if_missing=True
+    "huggingface-cache-qwq-32B-4b", create_if_missing=True
 )
 MODEL_DIR = "/hf-cache"  # Volume mount path
 
 
 @app.function(
-    gpu="A100-40GB",
+    gpu="L40S",
     image=hf_image,
     volumes={MODEL_DIR: model_volume},
     timeout=3600,  # 60 minutes
-    secrets=[modal.Secret.from_name("mongodb-secret")], # TODO: Set on Modal dashboard
+    secrets=[modal.Secret.from_name("mongodb-secret")],  # TODO: Set on Modal dashboard
 )
 def inference():
     import os
@@ -39,12 +39,12 @@ def inference():
 
     client = MongoClient(uri)
     db = client["NLP-Project"]
-    collection = db["ParaMAWPS"] # TODO: Change to your assigned dataset collection
+    collection = db["ParaMAWPS"]  # TODO: Change to your assigned dataset collection
 
-    # Model loading/storage logic
+    # Model loading/storage logic (unchanged)
     if not os.path.exists(f"{MODEL_DIR}/config.json"):
-        model = AutoModelForCausalLM.from_pretrained("unsloth/phi-4-unsloth-bnb-4bit")
-        tokenizer = AutoTokenizer.from_pretrained("unsloth/phi-4-unsloth-bnb-4bit")
+        model = AutoModelForCausalLM.from_pretrained("unsloth/QwQ-32B-bnb-4bit")
+        tokenizer = AutoTokenizer.from_pretrained("unsloth/QwQ-32B-bnb-4bit")
         model.save_pretrained(MODEL_DIR)
         tokenizer.save_pretrained(MODEL_DIR)
         model_volume.commit()
@@ -60,7 +60,7 @@ def inference():
 
     system_prompt = "Please provide a numeric answer to the math question and provide your explanation step by step. Structure your response in the following way:      Explanation: <insert your step by step explanation here>      Numeric Answer: <insert your answer here>"
 
-    query_filter = {"phi": {"$exists": False}}
+    query_filter = {"qwq": {"$exists": False}}
     results = collection.find(filter=query_filter).limit(100)
     counter = 0
     for question in results:
@@ -71,7 +71,9 @@ def inference():
             },
             {
                 "role": "user",
-                "content": question["original_text"], # TODO: Each dataset has different attribute for question
+                "content": question[
+                    "original_text"
+                ],  # TODO: Each dataset has different attribute for question
             },
         ]
 
@@ -87,7 +89,7 @@ def inference():
 
         collection.update_one(
             {"original_text": question["original_text"]},
-            {"$set": {"phi": response[0]["generated_text"]}},
+            {"$set": {"qwq": response[0]["generated_text"]}},
         )
 
         counter += 1
