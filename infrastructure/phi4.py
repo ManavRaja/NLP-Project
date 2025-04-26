@@ -20,7 +20,7 @@ MODEL_DIR = "/hf-cache"  # Volume mount path
     image=hf_image,
     volumes={MODEL_DIR: model_volume},
     timeout=5400,  # 60 minutes
-    secrets=[modal.Secret.from_name("mongodb-secret")],
+    secrets=[modal.Secret.from_name("mongodb-secret")], # TODO: Set on Modal dashboard
 )
 def inference():
     import os
@@ -39,17 +39,7 @@ def inference():
 
     client = MongoClient(uri)
     db = client["NLP-Project"]
-    collection = db["ParaMAWPS"]
-
-    query_filter = {"phi": {"$exists": False}}
-    results = collection.find(filter=query_filter).limit(100)
-
-    question_doc = collection.find_one(
-        {
-            "original_text": "There are 41 short trees and 44 tall trees currently in the park . Park workers will plant 57 short trees today . How many short trees will the park have when the workers are finished ?"
-        }
-    )
-    question_text = question_doc["original_text"]
+    collection = db["ParaMAWPS"] # TODO: Change to your assigned dataset collection
 
     # Model loading/storage logic
     if not os.path.exists(f"{MODEL_DIR}/config.json"):
@@ -72,7 +62,7 @@ def inference():
 
     query_filter = {"phi": {"$exists": False}}
     results = collection.find(filter=query_filter).limit(100)
-
+    counter = 0
     for question in results:
         chat = [
             {
@@ -81,7 +71,7 @@ def inference():
             },
             {
                 "role": "user",
-                "content": question_text,
+                "content": question["original_text"], # TODO: Each dataset has different attribute for question
             },
         ]
 
@@ -93,9 +83,12 @@ def inference():
         )
 
         response = pipe(prompt, do_sample=True, return_full_text=False)
-        print(response[0]["generated_text"])
+        # print(response[0]["generated_text"])
 
         collection.update_one(
             {"original_text": question["original_text"]},
             {"$set": {"phi": response[0]["generated_text"]}},
         )
+
+        counter += 1
+        print(f"Finished inferenced on {counter} questions.")
