@@ -2,7 +2,7 @@ import modal
 
 # Define container image
 hf_image = modal.Image.debian_slim(python_version="3.10").pip_install(
-    "transformers", "gguf", "torch", "accelerate", "bitsandbytes"
+    "transformers", "gguf", "torch", "accelerate", "bitsandbytes", "pymongo[srv]"
 )
 
 # Create a Modal app
@@ -16,10 +16,10 @@ MODEL_DIR = "/hf-cache"  # Volume mount path
 
 
 @app.function(
-    gpu="L40S",
+    gpu="H100",
     image=hf_image,
     volumes={MODEL_DIR: model_volume},
-    timeout=3600,  # 60 minutes
+    timeout=7200,  # 120 minutes
     secrets=[modal.Secret.from_name("mongodb-secret")],  # TODO: Set on Modal dashboard
 )
 def inference():
@@ -58,7 +58,7 @@ def inference():
 
     print("Loaded model into memory")
 
-    system_prompt = "Please provide a numeric answer to the math question and provide your explanation step by step. Structure your response in the following way:      Explanation: <insert your step by step explanation here>      Numeric Answer: <insert your answer here>"
+    system_prompt = "Think step by step and please provide a numeric answer to the math question. Structure your response in the following way:  Numeric Answer: <insert your answer here>"
 
     query_filter = {"qwq": {"$exists": False}}
     results = collection.find(filter=query_filter).limit(100)
@@ -88,9 +88,11 @@ def inference():
         # print(response[0]["generated_text"])
 
         collection.update_one(
-            {"original_text": question["original_text"]},
+            {
+                "original_text": question["original_text"]
+            },  # TODO: Each dataset has different attribute for question
             {"$set": {"qwq": response[0]["generated_text"]}},
         )
 
         counter += 1
-        print(f"Finished inferenced on {counter} questions.")
+        print(f"Finished inference on {counter} questions.")
