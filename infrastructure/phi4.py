@@ -20,7 +20,7 @@ MODEL_DIR = "/hf-cache"  # Volume mount path
     image=hf_image,
     volumes={MODEL_DIR: model_volume},
     timeout=3600,  # 60 minutes
-    secrets=[modal.Secret.from_name("mongodb-secret")], # TODO: Set on Modal dashboard
+    secrets=[modal.Secret.from_name("mongodb-secret")],  # TODO: Set on Modal dashboard
 )
 def inference():
     import os
@@ -38,8 +38,9 @@ def inference():
     uri = f"mongodb://{user}:{password}@{host}/"
 
     client = MongoClient(uri)
+    # client = MongoClient(uri, authSource="NLP-Project") # TODO: If you are not Manav, comment out the line above and uncomment the code on this line
     db = client["NLP-Project"]
-    collection = db["ParaMAWPS"] # TODO: Change to your assigned dataset collection
+    collection = db["ParaMAWPS"]  # TODO: Change to your assigned dataset collection
 
     # Model loading/storage logic
     if not os.path.exists(f"{MODEL_DIR}/config.json"):
@@ -61,7 +62,7 @@ def inference():
     system_prompt = "Please provide a numeric answer to the math question and provide your explanation step by step. Structure your response in the following way:      Explanation: <insert your step by step explanation here>      Numeric Answer: <insert your answer here>"
 
     query_filter = {"phi": {"$exists": False}}
-    results = collection.find(filter=query_filter).limit(100)
+    results = collection.find(filter=query_filter).limit(498)
     counter = 0
     for question in results:
         chat = [
@@ -71,7 +72,9 @@ def inference():
             },
             {
                 "role": "user",
-                "content": question["original_text"], # TODO: Each dataset has different attribute for question
+                "content": question[
+                    "original_text"
+                ],  # TODO: Each dataset has different attribute for question
             },
         ]
 
@@ -86,7 +89,9 @@ def inference():
         # print(response[0]["generated_text"])
 
         collection.update_one(
-            {"original_text": question["original_text"]},
+            {
+                "original_text": question["original_text"]
+            },  # TODO: Each dataset has different attribute for question
             {"$set": {"phi": response[0]["generated_text"]}},
         )
 
