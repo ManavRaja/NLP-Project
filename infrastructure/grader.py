@@ -64,8 +64,8 @@ def inference():
 
     system_prompt = "You will be given a math question, a solution that another LLM worked out, and its actual correct answer. Using that, determine if the worked out solution is correct or incorrect. If the worked out solution is incorrect, think about why it is incorrect and classify the type of error that the other LLM made. Use the following error taxonomy, if you cannot classify an error into one of these categories, just say “Other Error”; Calculation Error: Error appears during the calculation process, Counting Error: Error occurs during the counting process, Formula Confusion Error: Error appears when applying formula in inappropriate scenario, Question Misinterpretation Error: Error appears because the question is misunderstood, such as ignoring specific constraints in the question, Missing Step Error: Error entails an incomplete generation of reasoning process, lacking a necessary step, Confusing Concept Error: Error occurs because two similar but actually different concepts are mistakenly confused, Nonsensical Output: Inconceivable, illogical, or question-irrelevant output. Structure your response in the following way:Correct or Incorrect: <Insert whether the worked out solution is correct or incorrect>Error Category: <Insert error category if worked out solution is wrong or say N/A>"
 
-    query_filter = {"grader": {"$exists": False}}
-    results = collection.find(filter=query_filter).limit(400)
+    query_filter = {"grader-phi": {"$exists": False}}
+    results = collection.find(filter=query_filter).limit(300)
     counter = 0
     for question in results:
         chat = [
