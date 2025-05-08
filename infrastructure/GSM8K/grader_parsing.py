@@ -3,6 +3,8 @@ from pymongo import  MongoClient
 import os
 import urllib
 import re
+import pandas as pd
+import matplotlib.pyplot as plt
 os.environ["MODAL_TOKEN"] = "as-LtOqZZIFOI2ye6pRL3pkut" # TODO: Change to your token
 user = "luke" # TODO: Change to your use
 password = "yic;fddv$^&" # Super Secure TODO: change to your pass
@@ -33,11 +35,40 @@ for grade in grades:
         if re.search(error, response_trunc):
           errors[error] += 1
   # Pretty Print results
-  print(f"{grade} Error summary:")
-  total_errors = 0
-  for error in errors:
-    total_errors += errors[error]
-    print(f"{error}: total errors: {errors[error]}, percent of total responses: {errors[error] / 5}%")
-  print(f"Summary:")
-  print(f"Total errors: {total_errors}, Accuracy: {(500 - total_errors) / 5}%")
-  print()
+#  print(f"{grade} Error summary:")
+#  total_errors = 0
+#  for error in errors:
+#    total_errors += errors[error]
+#    print(f"{error}: total errors: {errors[error]}, percent of total responses: {errors[error] / 5}%")
+#  print(f"Summary:")
+#  print(f"Total errors: {total_errors}, Accuracy: {(500 - total_errors) / 5}%")
+#  print()
+
+# Create DataFrame
+  total = 500
+  df = pd.DataFrame([
+      {
+          "Error Type": err,
+          "Count": count,
+          "Percent": (count / total) * 100
+      }
+      for err, count in errors.items()
+  ])
+   # Print Table
+  print(f"\n{grade} Error Summary:")
+  print(df[["Error Type", "Count", "Percent"]].to_string(index=False, formatters={'Percent': '{:.2f}%'.format}))
+   # Summary
+  total_errors = df["Count"].sum()
+  accuracy = ((total - total_errors) / total) * 100
+  print(f"\nTotal Errors: {total_errors}")
+  print(f"Accuracy: {accuracy:.2f}%\n")
+   # Plot chart
+  plt.figure(figsize=(10, 6))
+  plt.barh(df["Error Type"], df["Count"], color="skyblue", edgecolor="black")
+  plt.xlabel("Count")
+  plt.title(f"{grade} – Error Breakdown (Total: {total_errors})")
+  plt.gca().invert_yaxis()
+  for i, val in enumerate(df["Count"]):
+      plt.text(val + 1, i, str(val), va='center')
+  plt.tight_layout()
+  plt.show()
